@@ -10,7 +10,8 @@
  */
 import * as SQLite from "expo-sqlite";
 import * as FileSystem from "expo-file-system/legacy";
-import { CORPUS_CATALOG, MODEL_CATALOG, CatalogModel } from "../models/manifest";
+import { allAssets } from "../models/assetRegistry";
+import { MODEL_CATALOG, CatalogModel } from "../models/manifest";
 import { buildLexicalQuery, cosineSimilarityInt8, filterByMinScore, filterByTermCoverage, MIN_SEMANTIC_SIMILARITY } from "./pure";
 import type { RetrievedChunk } from "./retrieve.types";
 import { decompress } from "fzstd";
@@ -37,12 +38,14 @@ const rejected = new Map<string, number>();
 const CORPUS_DIR = "corpus/";
 
 /**
- * Catalog packs, plus any other pack file in corpus/ (e.g. one built with
- * scripts/build-knowledge-pack.mjs and copied over with npm run pack:push).
- * Those have no catalog size to check, only the format and model checks in openPack.
+ * Registered sqlite packs (the curated catalog plus providers such as
+ * preparedness and crypto), plus any other pack file in corpus/ (e.g. one
+ * built with scripts/build-knowledge-pack.mjs and copied over with npm run
+ * pack:push). Those have no catalog size to check, only the format and model
+ * checks in openPack.
  */
 export async function knowledgePacks(): Promise<CatalogModel[]> {
-  const catalog = CORPUS_CATALOG.filter((m) => m.format === "sqlite-pack");
+  const catalog = allAssets().filter((m) => m.format === "sqlite-pack");
   const names = await FileSystem.readDirectoryAsync(`${FileSystem.documentDirectory}${CORPUS_DIR}`).catch(() => [] as string[]);
   const extra = names
     .filter((n) => n.endsWith(".sqlite") && !catalog.some((c) => c.filename === `${CORPUS_DIR}${n}`))

@@ -12,7 +12,8 @@ import {
 import { Text } from "./components/AppText";
 import { impact, notification, ImpactFeedbackStyle, NotificationFeedbackType, setHapticsEnabledCache } from "../services/haptics";
 import { useTranslation } from "react-i18next";
-import { MODEL_CATALOG, CatalogModel, AssetKind, CORPUS_CATALOG, REQUIRED_MODELS } from "../models/manifest";
+import { MODEL_CATALOG, CatalogModel, AssetKind, REQUIRED_MODELS } from "../models/manifest";
+import { settingsCorpusItems } from "./registerPacks";
 import { llamaEngine } from "../inference/LlamaEngine";
 import { ModelManager } from "../models/ModelManager";
 import { getActiveModelId, setActiveModelId, getHapticsEnabled, setHapticsEnabled } from "../models/settings";
@@ -80,9 +81,20 @@ export function ModelSetupScreen(props: Props) {
 
   const refreshStatus = useCallback(async () => {
     const statuses = await modelManager.statusAll();
+    // Topic packs (preparedness, crypto) are registered assets, not rows of
+    // MODEL_CATALOG, so statusAll() never reports them.
+    const known = new Set(statuses.map((s) => s.asset.id));
+    const topic = await Promise.all(
+      settingsCorpusItems()
+        .filter((item) => !known.has(item.id))
+        .map((item) => modelManager.statusOf(item))
+    );
     // Merge, not replace: replacing drops discovered models' presence until
     // refreshDiscovered() below restores it, flashing their Download button.
-    setPresence((prev) => ({ ...prev, ...Object.fromEntries(statuses.map((s) => [s.asset.id, s.present])) }));
+    setPresence((prev) => ({
+      ...prev,
+      ...Object.fromEntries([...statuses, ...topic].map((s) => [s.asset.id, s.present])),
+    }));
     await refreshDiscovered();
 
     const next: Partial<Record<AssetKind, string>> = {};
@@ -273,7 +285,7 @@ export function ModelSetupScreen(props: Props) {
 
         <AccordionSection title={t("modelSetupScreen.sections.knowledgeBase")}>
           <CorpusSettingsTab
-            corpusItems={CORPUS_CATALOG}
+            corpusItems={settingsCorpusItems()}
             getRow={getRow}
             download={download}
             remove={remove}

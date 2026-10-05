@@ -29,7 +29,9 @@ import { compressForAnswer } from "../rag/compress";
 import { classifyTask, isRetrievalIrrelevant } from "../routing/classify";
 import type { TaskType } from "../routing/types";
 import { onSeedProgress, seedKnowledgeBaseIfEmpty } from "../rag/seedCorpus";
-import { MODEL_CATALOG, CORPUS_CATALOG, REQUIRED_MODELS, CatalogModel } from "../models/manifest";
+import { allAssets } from "../models/assetRegistry";
+import { MODEL_CATALOG, REQUIRED_MODELS, CatalogModel } from "../models/manifest";
+import { isChatKnowledgePack } from "./registerPacks";
 import { listDiscoveredModels } from "../models/discoveredModels";
 import { subscribeDownloads, listDownloadStates } from "../services/downloadManager";
 import {
@@ -166,7 +168,8 @@ export function ChatScreen({
     if (!showEmptyState) return;
     let cancelled = false;
     const manager = new ModelManager();
-    Promise.all(CORPUS_CATALOG.map((c) => manager.statusOf(c)))
+    // Registered sqlite packs (allAssets): preparedness unlocks its suggestions once the file is on disk.
+    Promise.all(allAssets().filter(isChatKnowledgePack).map((c) => manager.statusOf(c)))
       .then((all) => {
         if (!cancelled) setInstalledCorpora(all.filter((st) => st.present).map((st) => st.asset.id));
       })
@@ -214,7 +217,7 @@ export function ChatScreen({
   // Face browser (loaded once on mount; discoveredModels.ts persists these
   // separately from MODEL_CATALOG, see that file's own comment).
   const assetLabelsRef = useRef<Record<string, string>>(
-    Object.fromEntries([...MODEL_CATALOG, ...CORPUS_CATALOG].map((m) => [m.id, m.label]))
+    Object.fromEntries(allAssets().map((m) => [m.id, m.label]))
   );
   // Which asset ids we've personally observed mid-download, so a
   // downloadManager notification firing for an unrelated reason (or one
