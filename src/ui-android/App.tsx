@@ -4,6 +4,8 @@ import { useFonts } from "expo-font";
 import { StyleSheet, ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import "../i18n";
+// Registers preparedness and crypto before any screen reads the asset registry.
+import "./registerPacks";
 import { LanguageProvider } from "../i18n/LanguageContext";
 import { ChatScreen } from "./ChatScreen";
 import { ModelSetupScreen } from "./ModelSetupScreen";
